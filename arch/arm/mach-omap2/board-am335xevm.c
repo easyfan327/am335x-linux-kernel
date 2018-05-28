@@ -176,6 +176,13 @@ static u8 am335x_iis_serializer_direction1[] = {
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 };
 
+static u8 am335x_iis_serializer_direction0[] = {
+	TX_MODE,	INACTIVE_MODE,	RX_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+};
+
 static struct snd_platform_data am335x_evm_snd_data1 = {
 	.tx_dma_offset	= 0x46400000,	/* McASP1 */
 	.rx_dma_offset	= 0x46400000,
@@ -191,12 +198,29 @@ static struct snd_platform_data am335x_evm_snd_data1 = {
 			omap_pm_get_dev_context_loss_count,
 };
 
+static struct snd_platform_data am335x_evm_snd_data0 = {
+	.tx_dma_offset	= 0x46000000,	/* McASP0 */
+	.rx_dma_offset	= 0x46000000,
+	.op_mode	= DAVINCI_MCASP_IIS_MODE,
+	.num_serializer	= ARRAY_SIZE(am335x_iis_serializer_direction0),
+	.tdm_slots	= 2,
+	.serial_dir	= am335x_iis_serializer_direction0,
+	.asp_chan_q	= EVENTQ_2,
+	.version	= MCASP_VERSION_3,
+	.txnumevt	= 1,
+	.rxnumevt	= 1,
+	.get_context_loss_count	=
+			omap_pm_get_dev_context_loss_count,
+};
+
+
 static u8 am335x_evm_sk_iis_serializer_direction1[] = {
 	INACTIVE_MODE,	INACTIVE_MODE,	TX_MODE,	INACTIVE_MODE,
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 };
+
 
 static struct snd_platform_data am335x_evm_sk_snd_data1 = {
 	.tx_dma_offset	= 0x46400000,	/* McASP1 */
@@ -600,9 +624,9 @@ static struct pinmux_config i2c1_pin_mux[] = {
 
 static struct pinmux_config i2c2_pin_mux[] = {
 	{"uart1_ctsn.i2c2_sda",    OMAP_MUX_MODE3 | AM33XX_SLEWCTRL_SLOW |
-					AM33XX_PULL_UP | AM33XX_INPUT_EN},
+					AM33XX_PULL_ENBL | AM33XX_INPUT_EN},
 	{"uart1_rtsn.i2c2_scl",   OMAP_MUX_MODE3 | AM33XX_SLEWCTRL_SLOW |
-					AM33XX_PULL_UP | AM33XX_INPUT_EN},
+					AM33XX_PULL_ENBL | AM33XX_INPUT_EN},
 	{NULL, 0},
 };
 
@@ -612,6 +636,16 @@ static struct pinmux_config mcasp1_pin_mux[] = {
 	{"mii1_rxerr.mcasp1_fsx", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"mii1_col.mcasp1_axr2", OMAP_MUX_MODE4 | AM33XX_PIN_INPUT_PULLDOWN},
 	{"rmii1_refclk.mcasp1_axr3", OMAP_MUX_MODE4 |
+						AM33XX_PIN_INPUT_PULLDOWN},
+	{NULL, 0},
+};
+
+/* Module pin mux for mcasp0 */
+static struct pinmux_config mcasp0_pin_mux[] = {
+	{"mcasp0_aclkx.mcasp0_aclkx", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
+	{"mcasp0_fsx.mcasp0_fsx", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
+	{"mcasp0_axr0.mcasp0_axr0", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLDOWN},
+	{"mcasp0_axr1.mcasp0_axr1", OMAP_MUX_MODE0 |
 						AM33XX_PIN_INPUT_PULLDOWN},
 	{NULL, 0},
 };
@@ -1573,10 +1607,12 @@ static struct lis3lv02d_platform_data lis331dlh_pdata = {
 };
 
 static struct i2c_board_info lis331dlh_i2c_boardinfo[] = {
+	/*
 	{
 		I2C_BOARD_INFO("lis331dlh", 0x18),
 		.platform_data = &lis331dlh_pdata,
 	},
+	*/
 };
 
 static void lis331dlh_init(int evm_id, int profile)
@@ -1613,9 +1649,11 @@ static void lis331dlh_init(int evm_id, int profile)
 }
 
 static struct i2c_board_info am335x_i2c1_boardinfo[] = {
+	/*
 	{
 		I2C_BOARD_INFO("tlv320aic3x", 0x1b),
 	},
+	*/
 	{
 		I2C_BOARD_INFO("tsl2550", 0x39),
 	},
@@ -1633,6 +1671,9 @@ static void i2c1_init(int evm_id, int profile)
 }
 
 static struct i2c_board_info am335x_i2c2_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("tlv320aic3x", 0x18),
+	},
 };
 
 static void i2c2_init(int evm_id, int profile)
@@ -1658,6 +1699,17 @@ static void mcasp1_init(int evm_id, int profile)
 
 	return;
 }
+
+/* Setup McASP 0 */
+static void mcasp0_init(int evm_id, int profile)
+{
+	/* Configure McASP */
+	setup_pin_mux(mcasp0_pin_mux);
+
+	am335x_register_mcasp(&am335x_evm_snd_data0, 0);
+	return;
+}
+
 
 static void mmc1_init(int evm_id, int profile)
 {
@@ -2205,7 +2257,7 @@ static struct evm_dev_cfg gen_purp_evm_dev_cfg[] = {
 		//(PROFILE_ALL & ~PROFILE_2 & ~PROFILE_3)},
 	{i2c1_init,     DEV_ON_DGHTR_BRD, (PROFILE_ALL & ~PROFILE_2)},
 	{lis331dlh_init, DEV_ON_DGHTR_BRD, (PROFILE_ALL & ~PROFILE_2)},
-	{mcasp1_init,	DEV_ON_DGHTR_BRD, (PROFILE_0 | PROFILE_3 | PROFILE_7)},
+	//{mcasp1_init,	DEV_ON_DGHTR_BRD, (PROFILE_0 | PROFILE_3 | PROFILE_7)},//Deleted by Feiyi Fan for TLV320AIC3x
 	{mmc1_init,	DEV_ON_DGHTR_BRD, PROFILE_2},
 	{mmc2_wl12xx_init,	DEV_ON_BASEBOARD, (PROFILE_0 | PROFILE_3 |
 								PROFILE_5)},
@@ -2284,21 +2336,23 @@ static struct evm_dev_cfg beagleboneblack_dev_cfg[] = {
 
 /* EVM - Starter Kit */
 static struct evm_dev_cfg evm_sk_dev_cfg[] = {
-	{gpio_led_init,  	DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{gpio_led_init,  	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{am335x_rtc_init, 	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{mmc0_init,			DEV_ON_BASEBOARD, PROFILE_ALL},
 	{lcdc_init,     	DEV_ON_BASEBOARD, PROFILE_ALL},
-	{enable_ecap2,     	DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{enable_ecap2,     	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{mfd_tscadc_init,	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{sgx_init,       	DEV_ON_BASEBOARD, PROFILE_ALL},
 #ifdef CONFIG_AM335X_JINRUI_SUPPORT
-	{uart1_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{uart1_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
 	{uart2_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
 	{uart3_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
 	{tps65217_init,		DEV_ON_BASEBOARD, PROFILE_NONE},
-	{usb0_init, 		DEV_ON_BASEBOARD, PROFILE_ALL},
-	{usb1_init, 		DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{usb0_init, 		DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{usb1_init, 		DEV_ON_BASEBOARD, PROFILE_ALL},
 	{rgmii1_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
+	{i2c2_init,     DEV_ON_BASEBOARD, PROFILE_ALL},//Added by Feiyi Fan for TLV320AIC3x
+	{mcasp0_init,	DEV_ON_BASEBOARD, PROFILE_ALL},//Added by Feiyi Fan for TLV320AIC3x
 	//{fpga_init,       	DEV_ON_BASEBOARD, PROFILE_ALL},
 #else
 	{gpio_keys_init,  	DEV_ON_BASEBOARD, PROFILE_ALL},
@@ -2306,7 +2360,7 @@ static struct evm_dev_cfg evm_sk_dev_cfg[] = {
 	{rgmii2_init,		DEV_ON_BASEBOARD, PROFILE_ALL},
 	{lis331dlh_init, 	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{mcasp1_init,   	DEV_ON_BASEBOARD, PROFILE_ALL},
-	{uart1_wl12xx_init, DEV_ON_BASEBOARD, PROFILE_ALL},
+	//{uart1_wl12xx_init, DEV_ON_BASEBOARD, PROFILE_ALL},
 	{gpio_ddr_vtt_enb_init,	DEV_ON_BASEBOARD, PROFILE_ALL},
 	{wl12xx_init,       DEV_ON_BASEBOARD, PROFILE_ALL},
 #endif
@@ -2759,9 +2813,11 @@ static struct i2c_board_info __initdata am335x_i2c0_boardinfo[] = {
 		I2C_BOARD_INFO("tps65910", TPS65910_I2C_ID1),
 		.platform_data  = &am335x_tps65910_info,
 	},
+	/*
 	{
 		I2C_BOARD_INFO("tlv320aic3x", 0x1b),
 	},
+	*/
 //#ifdef CONFIG_AM335X_JINRUI_SUPPORT
         {
                 I2C_BOARD_INFO("rx8025", 0x32),
